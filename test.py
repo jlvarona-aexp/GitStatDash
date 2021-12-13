@@ -55,9 +55,26 @@ def date_columns(x):
     return x
 
 df = dfCreator[['id', 'Submitted','Creator','Team','Band','Repo','Duration']]
-df = df.apply(date_columns, axis=1)
-print(df['Created'])
-ct = df.groupby(["Creator", "Created"]).agg({"id": "count"})
+#df = df.apply(date_columns, axis=1)
+print(df.size)
+ct = df.groupby("Creator").agg({"id": "count"}).sort_values(["id"], ascending=False)
+
+sum_total = ct.sum(axis=0)
+ct = ct.head(10)
+sum_head = ct.sum(axis=0)
+print(sum_total)
+print(sum_head)
+print(ct)
+ct.loc['Other'] = sum_total.values - sum_head.values
+#ct = ct.append({"id": {'Other', 9}}, ignore_index=True)
+#ct._set_value("Others", sum_total - sum_head)
+# indx = ct.index
+# ix = indx.append(pd.Index(['Others']))
+# ser = ct.values
+# ser2 = ser.append([sum_total - sum_head])
+# print(ser2)
+# ct.index = ix
+# print(ix)
 print(ct)
 print("===========================")
 #boolean_series = df["Repo"].isin(["m1-api-contracts"])

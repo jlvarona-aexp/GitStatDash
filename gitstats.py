@@ -2,7 +2,10 @@ from datetime import datetime
 
 import dash
 import dash_bootstrap_components as dbc
+import numpy as np
 from dash import html, dcc, Output, Input
+
+import constant
 import dbConnection
 import pandas as pd
 import plotly.graph_objs as go
@@ -126,6 +129,8 @@ sidebar = html.Div(
         repo_dd,
         band_dd,
         year_dd,
+        html.Hr(),
+        dbc.Button("Refresh Data", id="refresh-button", className="me-3")
     ],
     style=SIDEBAR_STYLE
 )
@@ -136,23 +141,32 @@ creator_charts = html.Div(
             [
                 dbc.Col(
                     [
-                        html.Label("PR Count by Developer"),
+                        html.Label(f"PR Count by Developer, Top {constant.MAX_RECORDS}"),
                         dcc.Graph(id="pie-creator-count")
                     ], md=6),
 
                 dbc.Col(
                     [
-                        html.Label("Average PR Duration"),
+                        html.Label("Average PR Duration (in Days)"),
                         dcc.Graph(id="pie-creator-duration")
                     ], md=6),
             ]
         ),
         dbc.Row(
-            dbc.Col(
-                [
-                    html.Label("PR Creation Over Time"),
-                    dcc.Graph(id="timeline-creator")
-                ])
+            [
+                dbc.Col(
+                    [
+                        html.Label("PR Creation Count Over Time"),
+                        dcc.Graph(id="timeline-creator")
+                    ]
+                ),
+                dbc.Col(
+                    [
+                        html.Label("PR Creation Average Over Time"),
+                        dcc.Graph(id="timeline-creator-average")
+                    ]
+                )
+            ]
         )
     ]
 )
@@ -165,12 +179,12 @@ reviewer_charts = html.Div(
             [
                     dbc.Col(
                         [
-                            html.Label("Review Count by Developer"),
+                            html.Label(f"Review Count by Developer. Top {constant.MAX_RECORDS}"),
                             dcc.Graph(id="pie-reviewer-count")
                         ], md=6),
                     dbc.Col(
                         [
-                            html.Label("Average time to First Review"),
+                            html.Label("Average Time to First Review (in Days)"),
                             dcc.Graph(id="pie-reviewer-duration")
                         ], md=6),
             ]
@@ -178,7 +192,7 @@ reviewer_charts = html.Div(
         dbc.Row(
                 dbc.Col(
                     [
-                        html.Label("Review Contributions Over Time"),
+                        html.Label("Review Contributions Count Over Time"),
                         dcc.Graph(id="timeline-reviewer")
                     ])
         )
@@ -186,6 +200,52 @@ reviewer_charts = html.Div(
 )
 
 reviewer_content = html.Div(reviewer_charts, id="reviewer-page-content", style=CONTENT_STYLE)
+
+creator_count_charts = html.Div(
+    [
+        dbc.Row(
+            dbc.Col(
+                [
+                    html.Label(f"PR Count by Developer, Top {constant.MAX_RECORDS}"),
+                    dcc.Graph(id="pie-creator-count")
+                ]
+            )
+        ),
+        dbc.Row(
+            dbc.Col(
+                [
+                    html.Label(f"PR Count by Developer, Bottom {constant.MAX_RECORDS}"),
+                    dcc.Graph(id="pie-creator-count-bottom")
+                ]
+            )
+        )
+    ]
+)
+
+creator_count_content = html.Div(creator_count_charts, id="creator-count-content", style=CONTENT_STYLE)
+
+reviewer_count_charts = html.Div(
+    [
+        dbc.Row(
+            dbc.Col(
+                [
+                    html.Label(f"Review Count by Developer, Top {constant.MAX_RECORDS}"),
+                    dcc.Graph(id="pie-reviewer-count")
+                ]
+            )
+        ),
+        dbc.Row(
+            dbc.Col(
+                [
+                    html.Label(f"Review Count by Developer, Bottom {constant.MAX_RECORDS}"),
+                    dcc.Graph(id="pie-reviewer-count-bottom")
+                ]
+            )
+        )
+    ]
+)
+
+reviewer_count_content = html.Div(reviewer_count_charts, id="creator-count-content", style=CONTENT_STYLE)
 
 tabLayout = dbc.Container(
     [
@@ -216,7 +276,8 @@ mainLayout = dbc.Container(
 
 app.layout = mainLayout
 
-def formatDate(x):
+
+def format_date(x):
     if x:
         if "/" in x:
             mydate = datetime.strptime(x, "%m/%d/%y")
@@ -225,6 +286,14 @@ def formatDate(x):
             return x[0:7]
     else:
         return ""
+
+
+# @app.callback(
+#     Input("refresh-button", "n_clicks")
+# )
+# def on_button_click():
+#     refreshData()
+
 
 @app.callback(
     Output("tab-content", "children"),
@@ -240,11 +309,11 @@ def render_tab_content(active_tab, data):
     if active_tab == "creator-tab":
         return creator_content
     elif active_tab == "creator-count-tab":
-        return html.Div(dcc.Graph(id="pie-creator-count"), style=CONTENT_STYLE)
+        return creator_count_content
     elif active_tab == "reviewer-tab":
         return reviewer_content
     elif active_tab == "reviewer-count-tab":
-        return html.Div(dcc.Graph(id="pie-reviewer-count"), style=CONTENT_STYLE)
+        return reviewer_count_content
 #    return "No tab selected"
 
 
@@ -260,8 +329,10 @@ def render_tab_content(active_tab, data):
 )
 def creator_count_graph(creators, teams, repos, bands, years):
     df = dfCreator[['id', 'Submitted', 'Creator', 'Team', 'Band', 'Repo', 'Duration']]
+    df['Created_At'] = df['Submitted'].apply(format_date)
     df = filter_chart_data(df, "Creator", bands, creators, repos, teams, years)
-    ct = df.groupby("Creator").agg({"id": "count"})
+    ct = df.groupby("Creator").agg({"id": "count"}).sort_values(["id"], ascending=False)
+    ct = top_records(ct)
     data = [
         go.Pie(
             labels=ct["id"].index,
@@ -271,6 +342,230 @@ def creator_count_graph(creators, teams, repos, bands, years):
     fig = go.Figure(data=data)
     fig.update_layout(autosize=True, margin=dict(t=0, b=0, l=0, r=0))
     return fig
+
+
+@app.callback(
+    Output("pie-creator-count-bottom", "figure"),
+    [
+        Input("creator-dropdown", "value"),
+        Input("team-dropdown", "value"),
+        Input("repo-dropdown", "value"),
+        Input("band-dropdown", "value"),
+        Input("year-dropdown", "value"),
+    ]
+)
+def creator_count_bottom_graph(creators, teams, repos, bands, years):
+    df = dfCreator[['id', 'Submitted', 'Creator', 'Team', 'Band', 'Repo', 'Duration']]
+    df['Created_At'] = df['Submitted'].apply(format_date)
+    df = filter_chart_data(df, "Creator", bands, creators, repos, teams, years)
+    ct = df.groupby("Creator").agg({"id": "count"}).sort_values(["id"], ascending=True).head(constant.MAX_RECORDS)
+    data = [
+        go.Pie(
+            labels=ct["id"].index,
+            values=ct["id"].values,
+        )
+    ]
+    fig = go.Figure(data=data)
+    fig.update_layout(autosize=True, margin=dict(t=0, b=0, l=0, r=0))
+    return fig
+
+
+@app.callback(
+    Output("pie-creator-duration", "figure"),
+    [
+        Input("creator-dropdown", "value"),
+        Input("team-dropdown", "value"),
+        Input("repo-dropdown", "value"),
+        Input("band-dropdown", "value"),
+        Input("year-dropdown", "value"),
+
+    ]
+)
+def creator_duration_graph(creators, teams, repos, bands, years):
+    df = dfCreator[['id', 'Submitted', 'Creator', 'Team', 'Band', 'Repo', 'Duration']]
+    df['Created_At'] = df['Submitted'].apply(format_date)
+    df = filter_chart_data(df, "Creator", bands, creators, repos, teams, years)
+    ct = df.groupby("Creator").agg({"Duration": "mean"})
+    data = [
+        go.Bar(
+            x=ct["Duration"].index,
+            y=ct["Duration"].values
+        )
+    ]
+    return go.Figure(data=data)
+
+
+@app.callback(
+    Output("timeline-creator", "figure"),
+    [
+        Input("creator-dropdown", "value"),
+        Input("team-dropdown", "value"),
+        Input("repo-dropdown", "value"),
+        Input("band-dropdown", "value"),
+        Input("year-dropdown", "value"),
+
+    ]
+)
+def timeline_creator_graph(creators, teams, repos, bands, years):
+    df = dfCreator[['id', 'Submitted', 'Creator', 'Team', 'Band', 'Repo', 'Duration']]
+    df['Created_At'] = df['Submitted'].apply(format_date)
+    df = filter_chart_data(df, "Creator", bands, creators, repos, teams, years)
+    return create_count_timeline_table(df)
+
+
+@app.callback(
+    Output("timeline-creator-average", "figure"),
+    [
+        Input("creator-dropdown", "value"),
+        Input("team-dropdown", "value"),
+        Input("repo-dropdown", "value"),
+        Input("band-dropdown", "value"),
+        Input("year-dropdown", "value"),
+
+    ]
+)
+def timeline_creator_average_graph(creators, teams, repos, bands, years):
+    df = dfCreator[['id', 'Submitted', 'Creator', 'Team', 'Band', 'Repo', 'Duration']]
+    df['Created_At'] = df['Submitted'].apply(format_date)
+    df = filter_chart_data(df, "Creator", bands, creators, repos, teams, years)
+    return create_average_timeline_table(df)
+
+
+@app.callback(
+    Output("pie-reviewer-count", "figure"),
+    [
+        Input("creator-dropdown", "value"),
+        Input("team-dropdown", "value"),
+        Input("repo-dropdown", "value"),
+        Input("band-dropdown", "value"),
+        Input("year-dropdown", "value"),
+
+    ]
+)
+def reviewer_count_graph(creators, teams, repos, bands, years):
+    df = dfReviewer[['id', 'Submitted', 'Reviewer', 'Team', 'Band', 'Repo', 'Duration']]
+    df['Created_At'] = df['Submitted'].apply(format_date)
+    df = filter_chart_data(df, "Reviewer", bands, creators, repos, teams, years)
+    ct = df.groupby("Reviewer").agg({"id": "count"}).sort_values(["id"], ascending=False)
+    ct = top_records(ct)
+    data = [
+        go.Pie(
+            labels=ct["id"].index,
+            values=ct["id"].values
+        )
+    ]
+    return go.Figure(data=data)
+
+
+@app.callback(
+    Output("pie-reviewer-count-bottom", "figure"),
+    [
+        Input("creator-dropdown", "value"),
+        Input("team-dropdown", "value"),
+        Input("repo-dropdown", "value"),
+        Input("band-dropdown", "value"),
+        Input("year-dropdown", "value"),
+
+    ]
+)
+def reviewer_count_bottom_graph(creators, teams, repos, bands, years):
+    df = dfReviewer[['id', 'Submitted', 'Reviewer', 'Team', 'Band', 'Repo', 'Duration']]
+    df['Created_At'] = df['Submitted'].apply(format_date)
+    df = filter_chart_data(df, "Reviewer", bands, creators, repos, teams, years)
+    ct = df.groupby("Reviewer").agg({"id": "count"}).sort_values(["id"], ascending=True).head(constant.MAX_RECORDS)
+    data = [
+        go.Pie(
+            labels=ct["id"].index,
+            values=ct["id"].values
+        )
+    ]
+    return go.Figure(data=data)
+
+
+def top_records(ct):
+    if ct.size > constant.MAX_RECORDS:
+        sum_total = ct.sum(axis=0)
+        ct = ct.head(constant.MAX_RECORDS)
+        sum_head = ct.sum(axis=0)
+        ct.loc['Others'] = sum_total.values - sum_head.values
+    return ct
+
+
+@app.callback(
+    Output("pie-reviewer-duration", "figure"),
+    [
+        Input("creator-dropdown", "value"),
+        Input("team-dropdown", "value"),
+        Input("repo-dropdown", "value"),
+        Input("band-dropdown", "value"),
+        Input("year-dropdown", "value"),
+
+    ]
+)
+def reviewer_duration_graph(creators, teams, repos, bands, years):
+    df = dfReviewer[['id', 'Submitted', 'Reviewer', 'Team', 'Band', 'Repo', 'since_start']]
+    df['Created_At'] = df['Submitted'].apply(format_date)
+    df = filter_chart_data(df, "Reviewer", bands, creators, repos, teams, years)
+    ct = df.groupby("Reviewer").agg({"since_start": "mean"})
+    data = [
+        go.Bar(
+            x=ct["since_start"].index,
+            y=ct["since_start"].values
+        )
+    ]
+    return go.Figure(data=data)
+
+
+@app.callback(
+    Output("timeline-reviewer", "figure"),
+    [
+        Input("creator-dropdown", "value"),
+        Input("team-dropdown", "value"),
+        Input("repo-dropdown", "value"),
+        Input("band-dropdown", "value"),
+        Input("year-dropdown", "value"),
+
+    ]
+)
+def timeline_reviewer_graph(creators, teams, repos, bands, years):
+    df = dfReviewer[['id', 'Submitted', 'Reviewer', 'Team', 'Band', 'Repo', 'since_update']]
+    df['Created_At'] = df['Submitted'].apply(format_date)
+    df = filter_chart_data(df, "Reviewer", bands, creators, repos, teams, years)
+    return create_count_timeline_table(df)
+
+
+def create_count_timeline_table(df):
+    table = pd.pivot_table(df, values='id', index=['Created_At'],
+                           columns=['Repo'], aggfunc=pd.Series.count)
+    data = []
+    for column in table.columns:
+        data.append(
+            go.Line(
+                x=table[column].index,
+                y=table[column].values,
+                name=column
+            )
+        )
+    figure = go.Figure(data=data)
+    figure.update_yaxes(automargin=True, autorange=True)
+    return figure
+
+
+def create_average_timeline_table(df):
+    table = pd.pivot_table(df, values='Duration', index=['Created_At'],
+                           columns=['Repo'], aggfunc=np.mean)
+    data = []
+    for column in table.columns:
+        data.append(
+            go.Line(
+                x=table[column].index,
+                y=table[column].values,
+                name=column
+            )
+        )
+    figure = go.Figure(data=data)
+    figure.update_yaxes(automargin=True, autorange=True)
+    return figure
 
 
 def filter_chart_data(df, user_role, bands, creators, repos, teams, years):
@@ -291,135 +586,6 @@ def filter_chart_data(df, user_role, bands, creators, repos, teams, years):
         df = df[boolean_series]
     return df
 
-
-@app.callback(
-    Output("pie-creator-duration", "figure"),
-    [
-        Input("creator-dropdown", "value"),
-        Input("team-dropdown", "value"),
-        Input("repo-dropdown", "value"),
-        Input("band-dropdown", "value"),
-        Input("year-dropdown", "value"),
-
-    ]
-)
-def creator_duration_graph(creators, teams, repos, bands, years):
-    df = dfCreator[['id', 'Submitted', 'Creator', 'Team', 'Band', 'Repo', 'Duration']]
-    df = filter_chart_data(df, "Creator", bands, creators, repos, teams, years)
-    ct = df.groupby("Creator").agg({"Duration": "mean"})
-    data = [
-        go.Bar(
-            x=ct["Duration"].index,
-            y=ct["Duration"].values
-        )
-    ]
-    return go.Figure(data=data)
-
-@app.callback(
-    Output("timeline-creator", "figure"),
-    [
-        Input("creator-dropdown", "value"),
-        Input("team-dropdown", "value"),
-        Input("repo-dropdown", "value"),
-        Input("band-dropdown", "value"),
-        Input("year-dropdown", "value"),
-
-    ]
-)
-def timeline_creator_graph(creators, teams, repos, bands, years):
-    df = dfCreator[['id', 'Submitted', 'Creator', 'Team', 'Band', 'Repo', 'Duration']]
-    df['Created_At'] = df['Submitted'].apply(formatDate)
-    df = filter_chart_data(df, "Creator", bands, creators, repos, teams, years)
-    table = pd.pivot_table(df, values='id', index=['Created_At'],
-                           columns=['Repo'], aggfunc=pd.Series.count)
-    data = []
-    for column in table.columns:
-        data.append(
-            go.Line(
-                x=table[column].index,
-                y=table[column].values,
-                name=column
-            )
-        )
-    figure = go.Figure(data=data)
-    figure.update_yaxes(automargin=True, autorange=True)
-    return figure
-
-@app.callback(
-    Output("pie-reviewer-count", "figure"),
-    [
-        Input("creator-dropdown", "value"),
-        Input("team-dropdown", "value"),
-        Input("repo-dropdown", "value"),
-        Input("band-dropdown", "value"),
-        Input("year-dropdown", "value"),
-
-    ]
-)
-def reviewer_count_graph(creators, teams, repos, bands, years):
-    df = dfReviewer[['id', 'Submitted', 'Reviewer', 'Team', 'reviewerBand', 'Repo', 'Duration']]
-    df = filter_chart_data(df, "Reviewer", bands, creators, repos, teams, years)
-    ct = df.groupby("Reviewer").agg({"id": "count"})
-    data = [
-        go.Pie(
-            labels=ct["id"].index,
-            values=ct["id"].values
-        )
-    ]
-    return go.Figure(data=data)
-
-@app.callback(
-    Output("pie-reviewer-duration", "figure"),
-    [
-        Input("creator-dropdown", "value"),
-        Input("team-dropdown", "value"),
-        Input("repo-dropdown", "value"),
-        Input("band-dropdown", "value"),
-        Input("year-dropdown", "value"),
-
-    ]
-)
-def reviewer_duration_graph(creators, teams, repos, bands, years):
-    df = dfReviewer[['id', 'Submitted', 'Reviewer', 'Team', 'reviewerBand', 'Repo', 'since_start']]
-    df = filter_chart_data(df, "Reviewer", bands, creators, repos, teams, years)
-    ct = df.groupby("Reviewer").agg({"since_start": "mean"})
-    data = [
-        go.Bar(
-            x=ct["since_start"].index,
-            y=ct["since_start"].values
-        )
-    ]
-    return go.Figure(data=data)
-
-@app.callback(
-    Output("timeline-reviewer", "figure"),
-    [
-        Input("creator-dropdown", "value"),
-        Input("team-dropdown", "value"),
-        Input("repo-dropdown", "value"),
-        Input("band-dropdown", "value"),
-        Input("year-dropdown", "value"),
-
-    ]
-)
-def timeline_reviewer_graph(creators, teams, repos, bands, years):
-    df = dfReviewer[['id', 'Submitted', 'Reviewer', 'Team', 'reviewerBand', 'Repo', 'since_update']]
-    df['Created_At'] = df['Submitted'].apply(formatDate)
-    df = filter_chart_data(df, "Reviewer", bands, creators, repos, teams, years)
-    table = pd.pivot_table(df, values='id', index=['Created_At'],
-                           columns=['Repo'], aggfunc=pd.Series.count)
-    data = []
-    for column in table.columns:
-        data.append(
-            go.Line(
-                x=table[column].index,
-                y=table[column].values,
-                name=column
-            )
-        )
-    figure = go.Figure(data=data)
-    figure.update_yaxes(automargin=True, autorange=True)
-    return figure
 
 if __name__ == "__main__":
     app.run_server()
