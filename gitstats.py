@@ -10,15 +10,21 @@ import dbConnection
 import pandas as pd
 import plotly.graph_objs as go
 
-conn = dbConnection.getDBConnection()
-dfCreator = pd.read_sql_query(dbConnection.sqlCreators, conn)
-dfReviewer = pd.read_sql_query(dbConnection.sqlActivitiesDiffs, conn)
-dfRepos = pd.read_sql_query(dbConnection.sqlRepos, conn)
-dfTeams = pd.read_sql_query(dbConnection.sqlTeams, conn)
-dfBands = pd.read_sql_query(dbConnection.sqlBand, conn)
-dfCreatorNames = pd.read_sql_query(dbConnection.sqlCreatorNames, conn)
-dfReviewerNames = pd.read_sql_query(dbConnection.sqlCommenterNames, conn)
-conn.close()
+
+def calculate_data():
+    global dfCreator, dfReviewer, dfRepos, dfTeams, dfBands, dfCreatorNames, dfReviewerNames
+    conn = dbConnection.getDBConnection()
+    dfCreator = pd.read_sql_query(dbConnection.sqlCreatorsShort, conn)
+    dfReviewer = pd.read_sql_query(dbConnection.sqlActivitiesDiffsShort, conn)
+    dfRepos = pd.read_sql_query(dbConnection.sqlRepos, conn)
+    dfTeams = pd.read_sql_query(dbConnection.sqlTeams, conn)
+    dfBands = pd.read_sql_query(dbConnection.sqlBand, conn)
+    dfCreatorNames = pd.read_sql_query(dbConnection.sqlCreatorNames, conn)
+    dfReviewerNames = pd.read_sql_query(dbConnection.sqlCommenterNames, conn)
+    conn.close()
+
+
+calculate_data()
 
 app = dash.Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
 
@@ -117,6 +123,7 @@ year_dd = html.Div([
              'value': x} for x in ["2020", "2021", "2022", "2023", "2024"]
         ],
         multi=True)], className="dash-bootstrap")
+
 sidebar = html.Div(
     [
         html.H2("PR Metrics", className="display-4"),
@@ -130,7 +137,7 @@ sidebar = html.Div(
         band_dd,
         year_dd,
         html.Hr(),
-        dbc.Button("Refresh Data", id="refresh-button", className="me-3")
+        dbc.Button("Refresh Data", id="refresh-button", className="me-3", href="/")
     ],
     style=SIDEBAR_STYLE
 )
@@ -177,24 +184,24 @@ reviewer_charts = html.Div(
     [
         dbc.Row(
             [
-                    dbc.Col(
-                        [
-                            html.Label(f"Review Count by Developer. Top {constant.MAX_RECORDS}"),
-                            dcc.Graph(id="pie-reviewer-count")
-                        ], md=6),
-                    dbc.Col(
-                        [
-                            html.Label("Average Time to First Review (in Days)"),
-                            dcc.Graph(id="pie-reviewer-duration")
-                        ], md=6),
+                dbc.Col(
+                    [
+                        html.Label(f"Review Count by Developer. Top {constant.MAX_RECORDS}"),
+                        dcc.Graph(id="pie-reviewer-count")
+                    ], md=6),
+                dbc.Col(
+                    [
+                        html.Label("Average Time to First Review (in Days)"),
+                        dcc.Graph(id="pie-reviewer-duration")
+                    ], md=6),
             ]
         ),
         dbc.Row(
-                dbc.Col(
-                    [
-                        html.Label("Review Contributions Count Over Time"),
-                        dcc.Graph(id="timeline-reviewer")
-                    ])
+            dbc.Col(
+                [
+                    html.Label("Review Contributions Count Over Time"),
+                    dcc.Graph(id="timeline-reviewer")
+                ])
         )
     ]
 )
@@ -249,7 +256,6 @@ reviewer_count_content = html.Div(reviewer_count_charts, id="creator-count-conte
 
 tabLayout = dbc.Container(
     [
-        dcc.Store(id="store"),
         dbc.Tabs(
             [
                 dbc.Tab(label="Creator", tab_id="creator-tab"),
@@ -266,11 +272,14 @@ tabLayout = dbc.Container(
 )
 
 mainLayout = dbc.Container(
+    [
+        dcc.Store(id="store"),
         dbc.Row([
             dbc.Col(sidebar, width=2),
             dbc.Col(tabLayout, width=10)
-            ]
-    ),
+        ]
+        )
+    ],
     fluid=True
 )
 
@@ -288,11 +297,15 @@ def format_date(x):
         return ""
 
 
-# @app.callback(
-#     Input("refresh-button", "n_clicks")
-# )
-# def on_button_click():
-#     refreshData()
+@app.callback(
+    Output("store", "data"),
+    [
+        Input("refresh-button", "n_clicks"),
+    ]
+)
+def on_button_click(n):
+    calculate_data()
+    return {}
 
 
 @app.callback(
@@ -305,7 +318,7 @@ def render_tab_content(active_tab, data):
     stored graphs, and renders the tab content depending on what the value of
     'active_tab' is.
     """
-#    if active_tab and data is not None:
+    #    if active_tab and data is not None:
     if active_tab == "creator-tab":
         return creator_content
     elif active_tab == "creator-count-tab":
@@ -314,6 +327,8 @@ def render_tab_content(active_tab, data):
         return reviewer_content
     elif active_tab == "reviewer-count-tab":
         return reviewer_count_content
+
+
 #    return "No tab selected"
 
 
@@ -328,7 +343,7 @@ def render_tab_content(active_tab, data):
     ]
 )
 def creator_count_graph(creators, teams, repos, bands, years):
-    df = dfCreator[['id', 'Submitted', 'Creator', 'Team', 'Band', 'Repo', 'Duration']]
+    df = dfCreator
     df['Created_At'] = df['Submitted'].apply(format_date)
     df = filter_chart_data(df, "Creator", bands, creators, repos, teams, years)
     ct = df.groupby("Creator").agg({"id": "count"}).sort_values(["id"], ascending=False)
@@ -337,7 +352,7 @@ def creator_count_graph(creators, teams, repos, bands, years):
         go.Pie(
             labels=ct["id"].index,
             values=ct["id"].values
-               )
+        )
     ]
     fig = go.Figure(data=data)
     fig.update_layout(autosize=True, margin=dict(t=0, b=0, l=0, r=0))
@@ -355,7 +370,7 @@ def creator_count_graph(creators, teams, repos, bands, years):
     ]
 )
 def creator_count_bottom_graph(creators, teams, repos, bands, years):
-    df = dfCreator[['id', 'Submitted', 'Creator', 'Team', 'Band', 'Repo', 'Duration']]
+    df = dfCreator
     df['Created_At'] = df['Submitted'].apply(format_date)
     df = filter_chart_data(df, "Creator", bands, creators, repos, teams, years)
     ct = df.groupby("Creator").agg({"id": "count"}).sort_values(["id"], ascending=True).head(constant.MAX_RECORDS)
@@ -382,7 +397,7 @@ def creator_count_bottom_graph(creators, teams, repos, bands, years):
     ]
 )
 def creator_duration_graph(creators, teams, repos, bands, years):
-    df = dfCreator[['id', 'Submitted', 'Creator', 'Team', 'Band', 'Repo', 'Duration']]
+    df = dfCreator
     df['Created_At'] = df['Submitted'].apply(format_date)
     df = filter_chart_data(df, "Creator", bands, creators, repos, teams, years)
     ct = df.groupby("Creator").agg({"Duration": "mean"})
@@ -407,7 +422,7 @@ def creator_duration_graph(creators, teams, repos, bands, years):
     ]
 )
 def timeline_creator_graph(creators, teams, repos, bands, years):
-    df = dfCreator[['id', 'Submitted', 'Creator', 'Team', 'Band', 'Repo', 'Duration']]
+    df = dfCreator
     df['Created_At'] = df['Submitted'].apply(format_date)
     df = filter_chart_data(df, "Creator", bands, creators, repos, teams, years)
     return create_count_timeline_table(df)
@@ -425,7 +440,7 @@ def timeline_creator_graph(creators, teams, repos, bands, years):
     ]
 )
 def timeline_creator_average_graph(creators, teams, repos, bands, years):
-    df = dfCreator[['id', 'Submitted', 'Creator', 'Team', 'Band', 'Repo', 'Duration']]
+    df = dfCreator
     df['Created_At'] = df['Submitted'].apply(format_date)
     df = filter_chart_data(df, "Creator", bands, creators, repos, teams, years)
     return create_average_timeline_table(df)
@@ -443,7 +458,7 @@ def timeline_creator_average_graph(creators, teams, repos, bands, years):
     ]
 )
 def reviewer_count_graph(creators, teams, repos, bands, years):
-    df = dfReviewer[['id', 'Submitted', 'Reviewer', 'Team', 'Band', 'Repo', 'Duration']]
+    df = dfReviewer
     df['Created_At'] = df['Submitted'].apply(format_date)
     df = filter_chart_data(df, "Reviewer", bands, creators, repos, teams, years)
     ct = df.groupby("Reviewer").agg({"id": "count"}).sort_values(["id"], ascending=False)
@@ -469,7 +484,7 @@ def reviewer_count_graph(creators, teams, repos, bands, years):
     ]
 )
 def reviewer_count_bottom_graph(creators, teams, repos, bands, years):
-    df = dfReviewer[['id', 'Submitted', 'Reviewer', 'Team', 'Band', 'Repo', 'Duration']]
+    df = dfReviewer
     df['Created_At'] = df['Submitted'].apply(format_date)
     df = filter_chart_data(df, "Reviewer", bands, creators, repos, teams, years)
     ct = df.groupby("Reviewer").agg({"id": "count"}).sort_values(["id"], ascending=True).head(constant.MAX_RECORDS)
@@ -503,7 +518,7 @@ def top_records(ct):
     ]
 )
 def reviewer_duration_graph(creators, teams, repos, bands, years):
-    df = dfReviewer[['id', 'Submitted', 'Reviewer', 'Team', 'Band', 'Repo', 'since_start']]
+    df = dfReviewer
     df['Created_At'] = df['Submitted'].apply(format_date)
     df = filter_chart_data(df, "Reviewer", bands, creators, repos, teams, years)
     ct = df.groupby("Reviewer").agg({"since_start": "mean"})
@@ -528,7 +543,7 @@ def reviewer_duration_graph(creators, teams, repos, bands, years):
     ]
 )
 def timeline_reviewer_graph(creators, teams, repos, bands, years):
-    df = dfReviewer[['id', 'Submitted', 'Reviewer', 'Team', 'Band', 'Repo', 'since_update']]
+    df = dfReviewer
     df['Created_At'] = df['Submitted'].apply(format_date)
     df = filter_chart_data(df, "Reviewer", bands, creators, repos, teams, years)
     return create_count_timeline_table(df)
