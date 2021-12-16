@@ -21,3 +21,4 @@ sd-material-ui==4.6.0
 six==1.16.0
 tenacity==8.0.1
 Werkzeug==2.0.2
+gunicorn-20.1.0

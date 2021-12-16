@@ -4,6 +4,7 @@ import dash
 import dash_bootstrap_components as dbc
 import numpy as np
 from dash import html, dcc, Output, Input
+from flask import Flask
 
 import constant
 import dbConnection
@@ -26,7 +27,9 @@ def calculate_data():
 
 calculate_data()
 
+#server = Flask(__name__)
 app = dash.Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
+#app.title("PR Metrics Dashboard")
 
 SIDEBAR_STYLE = {
     # "position": "fixed",

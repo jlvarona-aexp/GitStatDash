@@ -24,7 +24,7 @@ from CREATORS as c
 left join repos r on c.repo = r.id
 left join users as u on c.creator = u.id
 left join teams as t on u.team_id = t.id
-where u.name not in ('svc.m1automation', 'Mobile Automation','svc.mobiletools', 'svc.e1github', 'svc.github', 'svc.github_next', 'svc.onereg-github', 'github-actions[bot]')
+where u.name not in ('SVC.MPSautomation', 'svc.m1automation m1automation', 'svc.m1automation', 'Mobile Automation','svc.mobiletools', 'svc.e1github', 'svc.github', 'svc.github_next', 'svc.onereg-github', 'github-actions[bot]')
 order by c.repo, c.id desc '''
 
 
@@ -52,7 +52,7 @@ from CREATORS as c
 left join repos r on c.repo = r.id
 left join users as u on c.creator = u.id
 left join teams as t on u.team_id = t.id
-where u.name not in ('svc.m1automation', 'Mobile Automation','svc.mobiletools', 'svc.e1github', 'svc.github', 'svc.github_next', 'svc.onereg-github', 'github-actions[bot]')
+where u.name not in ('SVC.MPSautomation', 'svc.m1automation m1automation', 'svc.m1automation', 'Mobile Automation','svc.mobiletools', 'svc.e1github', 'svc.github', 'svc.github_next', 'svc.onereg-github', 'github-actions[bot]')
 order by c.repo, c.id desc '''
 
 
@@ -74,7 +74,7 @@ where a.pr_id = c.pr_id and
         a.user_id = u.id and
         c.repo = r.id and
         c.creator <> a.user_id and
-        u.name not in ('svc.m1automation', 'Mobile Automation','svc.mobiletools', 'svc.e1github', 'svc.github', 'svc.github_next', 'svc.onereg-github', 'github-actions[bot]')
+        u.name not in ('SVC.MPSautomation', 'svc.m1automation m1automation', 'svc.m1automation', 'Mobile Automation','svc.mobiletools', 'svc.e1github', 'svc.github', 'svc.github_next', 'svc.onereg-github', 'github-actions[bot]')
 group by a.pr_id
 order by c.repo, c.id desc, a.activity_id asc '''
 
@@ -113,7 +113,7 @@ where a.pr_id = c.pr_id and
         a.user_id = u.id and
         c.repo = r.id and
         c.creator <> a.user_id and
-        u.name not in ('svc.m1automation', 'Mobile Automation','svc.mobiletools', 'svc.e1github', 'svc.github', 'svc.github_next', 'svc.onereg-github', 'github-actions[bot]')
+        u.name not in ('SVC.MPSautomation', 'svc.m1automation m1automation', 'svc.m1automation', 'Mobile Automation','svc.mobiletools', 'svc.e1github', 'svc.github', 'svc.github_next', 'svc.onereg-github', 'github-actions[bot]')
 group by a.pr_id
 order by c.repo, c.id desc, a.activity_id asc '''
 
