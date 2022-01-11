@@ -3,8 +3,9 @@ from datetime import datetime
 import dash
 import dash_bootstrap_components as dbc
 import numpy as np
-from dash import html, dcc, Output, Input
+from dash import html, dcc, Output, Input, dash_table
 from flask import Flask
+from pandas import Index
 
 import constant
 import dbConnection
@@ -13,23 +14,27 @@ import plotly.graph_objs as go
 
 
 def calculate_data():
-    global dfCreator, dfReviewer, dfRepos, dfTeams, dfBands, dfCreatorNames, dfReviewerNames
+    global dfCreator, dfReviewer, dfReviewerAll, dfRepos, dfTeams, dfBands, dfCreatorNames, dfReviewerNames, dfCreatorSize
     conn = dbConnection.getDBConnection()
     dfCreator = pd.read_sql_query(dbConnection.sqlCreatorsShort, conn)
     dfReviewer = pd.read_sql_query(dbConnection.sqlActivitiesDiffsShort, conn)
+    dfReviewerAll = pd.read_sql_query(dbConnection.sqlActivitiesDiffsAll, conn)
     dfRepos = pd.read_sql_query(dbConnection.sqlRepos, conn)
     dfTeams = pd.read_sql_query(dbConnection.sqlTeams, conn)
     dfBands = pd.read_sql_query(dbConnection.sqlBand, conn)
     dfCreatorNames = pd.read_sql_query(dbConnection.sqlCreatorNames, conn)
     dfReviewerNames = pd.read_sql_query(dbConnection.sqlCommenterNames, conn)
     conn.close()
+#    dfCreatorSize = dfCreator[["Created_At", "Creator", "Additions", "Deletions", "Changed Files"]].copy()
 
 
 calculate_data()
 
 #server = Flask(__name__)
 app = dash.Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
-#app.title("PR Metrics Dashboard")
+app.title = "PR Metrics Dashboard"
+
+PAGE_SIZE = 20
 
 SIDEBAR_STYLE = {
     # "position": "fixed",
@@ -48,6 +53,12 @@ CONTENT_STYLE = {
     "widht": "100%",
     "height": "100%",
 }
+
+CHART_TABLE_STYLE = {
+    "border-style": "solid",
+    "border-color": "#f8f9fa",
+}
+
 creator_dd = html.Div([
     html.P(),
     html.Label(
@@ -151,30 +162,30 @@ creator_charts = html.Div(
             [
                 dbc.Col(
                     [
-                        html.Label(f"PR Count by Developer, Top {constant.MAX_RECORDS}"),
+                        html.Label(f"PR Count by Developer, Top {constant.MAX_RECORDS}", className="lead"),
                         dcc.Graph(id="pie-creator-count")
-                    ], md=6),
+                    ], md=6, style=CHART_TABLE_STYLE),
 
                 dbc.Col(
                     [
-                        html.Label("Average PR Duration (in Days)"),
+                        html.Label("Average PR Duration (in Days)", className="lead"),
                         dcc.Graph(id="pie-creator-duration")
-                    ], md=6),
+                    ], md=6, style=CHART_TABLE_STYLE),
             ]
         ),
         dbc.Row(
             [
                 dbc.Col(
                     [
-                        html.Label("PR Creation Count Over Time"),
+                        html.Label("PR Creation Count Over Time", className="lead"),
                         dcc.Graph(id="timeline-creator")
-                    ]
+                    ], style=CHART_TABLE_STYLE
                 ),
                 dbc.Col(
                     [
-                        html.Label("PR Creation Average Over Time"),
+                        html.Label("PR Creation Average Over Time", className="lead"),
                         dcc.Graph(id="timeline-creator-average")
-                    ]
+                    ], style=CHART_TABLE_STYLE
                 )
             ]
         )
@@ -189,22 +200,22 @@ reviewer_charts = html.Div(
             [
                 dbc.Col(
                     [
-                        html.Label(f"Review Count by Developer. Top {constant.MAX_RECORDS}"),
+                        html.Label(f"Review Count by Developer. Top {constant.MAX_RECORDS}", className="lead"),
                         dcc.Graph(id="pie-reviewer-count")
-                    ], md=6),
+                    ], md=6, style=CHART_TABLE_STYLE),
                 dbc.Col(
                     [
-                        html.Label("Average Time to First Review (in Days)"),
+                        html.Label("Average Time to First Review (in Days)", className="lead"),
                         dcc.Graph(id="pie-reviewer-duration")
-                    ], md=6),
+                    ], md=6, style=CHART_TABLE_STYLE),
             ]
         ),
         dbc.Row(
             dbc.Col(
                 [
-                    html.Label("Review Contributions Count Over Time"),
+                    html.Label("Review Contributions Count Over Time", className="lead"),
                     dcc.Graph(id="timeline-reviewer")
-                ])
+                ], style=CHART_TABLE_STYLE)
         )
     ]
 )
@@ -213,49 +224,116 @@ reviewer_content = html.Div(reviewer_charts, id="reviewer-page-content", style=C
 
 creator_count_charts = html.Div(
     [
-        dbc.Row(
+        dbc.Row([
             dbc.Col(
                 [
-                    html.Label(f"PR Count by Developer, Top {constant.MAX_RECORDS}"),
+                    html.Label(f"PR Count by Developer, Top {constant.MAX_RECORDS}", className="lead"),
                     dcc.Graph(id="pie-creator-count")
-                ]
-            )
-        ),
-        dbc.Row(
+                ], md=6, style=CHART_TABLE_STYLE
+            ),
             dbc.Col(
                 [
-                    html.Label(f"PR Count by Developer, Bottom {constant.MAX_RECORDS}"),
-                    dcc.Graph(id="pie-creator-count-bottom")
-                ]
+                    html.Label(f"PR Addition Count by Developer, Top {constant.MAX_RECORDS}", className="lead"),
+                    dcc.Graph(id="pie-creator-addition-count")
+                ], md=6, style=CHART_TABLE_STYLE
             )
+            ]
+        ),
+        dbc.Row([
+            dbc.Col(
+                [
+                    html.Label(f"PR Deletion Count by Developer, Top {constant.MAX_RECORDS}", className="lead"),
+                    dcc.Graph(id="pie-creator-deletions-count")
+                ], md=6, style=CHART_TABLE_STYLE
+            ),
+            dbc.Col(
+                [
+                    html.Label(f"PR Changed Files Count by Developer, Top {constant.MAX_RECORDS}", className="lead"),
+                    dcc.Graph(id="pie-creator-changed-files-count")
+                ], md=6, style=CHART_TABLE_STYLE
+            )
+            ]
         )
+    ]
+)
+
+pr_size_count = html.Div([
+    dash_table.DataTable(
+        id="pr-size-table",
+        columns=[
+            {"name": "Creator", "id": "Creator"},
+            {"name": "Additions (lines)", "id": "Additions"},
+            {"name": "Deletions (lines)", "id": "Deletions"},
+            {"name": "Changed Files", "id": "Changed Files"},
+            {"name": "Duration (days)", "id": "Duration"}],   #[{"name": i, "id": i} for i in prSizeColumns],
+        page_current=0,
+        page_size=PAGE_SIZE,
+        page_action='custom',
+        sort_action='custom',
+        sort_mode='single',
+        sort_by=[],
+        style_header={'backgroundColor': 'black',
+                      'color': 'white'},
+        style_cell={'textAlign': 'center'},
+        style_cell_conditional=[
+            {
+                'if': {'column_id': 'Creator'},
+                'textAlign': 'left'
+            }
+        ]
+    ),
+    html.Br(),
+    dcc.Checklist(
+        id='datatable-use-page-count',
+        options=[
+            {'label': 'Use page_count', 'value': 'True'}
+        ],
+        value=['True']
+    ),
+    'Page count: ',
+    dcc.Input(
+        id='datatable-page-count',
+        type='number',
+        min=1,
+        max=29,
+        value=20
+    )
     ]
 )
 
 creator_count_content = html.Div(creator_count_charts, id="creator-count-content", style=CONTENT_STYLE)
 
+creator_pr_size_content = html.Div(pr_size_count, id="creator-pr-size-content", style=CONTENT_STYLE)
+
 reviewer_count_charts = html.Div(
     [
-        dbc.Row(
+        dbc.Row([
             dbc.Col(
                 [
-                    html.Label(f"Review Count by Developer, Top {constant.MAX_RECORDS}"),
+                    html.Label(f"Review Count by Developer, Top {constant.MAX_RECORDS}", className="lead"),
                     dcc.Graph(id="pie-reviewer-count")
-                ]
+                ], md=6, style=CHART_TABLE_STYLE
+            ),
+            dbc.Col(
+                [
+                    html.Label(f"Review Count by Developer All States, Top {constant.MAX_RECORDS}", className="lead"),
+                    dcc.Graph(id="pie-reviewer-all-count")
+                ], md=6, style=CHART_TABLE_STYLE
             )
+            ]
         ),
         dbc.Row(
             dbc.Col(
                 [
-                    html.Label(f"Review Count by Developer, Bottom {constant.MAX_RECORDS}"),
+                    html.Label(f"Review Count by Developer, Bottom {constant.MAX_RECORDS}", className="lead"),
                     dcc.Graph(id="pie-reviewer-count-bottom")
-                ]
+                ], md=6, style=CHART_TABLE_STYLE
             )
         )
     ]
 )
 
-reviewer_count_content = html.Div(reviewer_count_charts, id="creator-count-content", style=CONTENT_STYLE)
+reviewer_count_content = html.Div(reviewer_count_charts, id="reviewer-count-content", style=CONTENT_STYLE)
 
 tabLayout = dbc.Container(
     [
@@ -263,6 +341,7 @@ tabLayout = dbc.Container(
             [
                 dbc.Tab(label="Creator", tab_id="creator-tab"),
                 dbc.Tab(label="Creator Count", tab_id="creator-count-tab"),
+                dbc.Tab(label="Creator Sizes", tab_id="creator-pr-size-tab"),
                 dbc.Tab(label="Reviewer", tab_id="reviewer-tab"),
                 dbc.Tab(label="Reviewer Count", tab_id="reviewer-count-tab"),
             ],
@@ -326,6 +405,8 @@ def render_tab_content(active_tab, data):
         return creator_content
     elif active_tab == "creator-count-tab":
         return creator_count_content
+    elif active_tab == "creator-pr-size-tab":
+        return creator_pr_size_content
     elif active_tab == "reviewer-tab":
         return reviewer_content
     elif active_tab == "reviewer-count-tab":
@@ -363,6 +444,87 @@ def creator_count_graph(creators, teams, repos, bands, years):
 
 
 @app.callback(
+    Output("pie-creator-addition-count", "figure"),
+    [
+        Input("creator-dropdown", "value"),
+        Input("team-dropdown", "value"),
+        Input("repo-dropdown", "value"),
+        Input("band-dropdown", "value"),
+        Input("year-dropdown", "value"),
+    ]
+)
+def creator_addition_count_graph(creators, teams, repos, bands, years):
+    df = dfCreator
+    df['Created_At'] = df['Submitted'].apply(format_date)
+    df = filter_chart_data(df, "Creator", bands, creators, repos, teams, years)
+    ct = df.groupby("Creator").agg({"Additions": "sum"}).sort_values(["Additions"], ascending=False)
+    ct = top_records(ct)
+    data = [
+        go.Pie(
+            labels=ct["Additions"].index,
+            values=ct["Additions"].values
+        )
+    ]
+    fig = go.Figure(data=data)
+    fig.update_layout(autosize=True, margin=dict(t=0, b=0, l=0, r=0))
+    return fig
+
+
+@app.callback(
+    Output("pie-creator-deletions-count", "figure"),
+    [
+        Input("creator-dropdown", "value"),
+        Input("team-dropdown", "value"),
+        Input("repo-dropdown", "value"),
+        Input("band-dropdown", "value"),
+        Input("year-dropdown", "value"),
+    ]
+)
+def creator_deletions_count_graph(creators, teams, repos, bands, years):
+    df = dfCreator
+    df['Created_At'] = df['Submitted'].apply(format_date)
+    df = filter_chart_data(df, "Creator", bands, creators, repos, teams, years)
+    ct = df.groupby("Creator").agg({"Deletions": "sum"}).sort_values(["Deletions"], ascending=False)
+    ct = top_records(ct)
+    data = [
+        go.Pie(
+            labels=ct["Deletions"].index,
+            values=ct["Deletions"].values
+        )
+    ]
+    fig = go.Figure(data=data)
+    fig.update_layout(autosize=True, margin=dict(t=0, b=0, l=0, r=0))
+    return fig
+
+
+@app.callback(
+    Output("pie-creator-changed-files-count", "figure"),
+    [
+        Input("creator-dropdown", "value"),
+        Input("team-dropdown", "value"),
+        Input("repo-dropdown", "value"),
+        Input("band-dropdown", "value"),
+        Input("year-dropdown", "value"),
+    ]
+)
+def creator_changed_files_count_graph(creators, teams, repos, bands, years):
+    df = dfCreator
+    df['Created_At'] = df['Submitted'].apply(format_date)
+    df = filter_chart_data(df, "Creator", bands, creators, repos, teams, years)
+    ct = df.groupby("Creator").agg({"Changed Files": "count"}).sort_values(["Changed Files"], ascending=False)
+    ct = top_records(ct)
+    data = [
+        go.Pie(
+            labels=ct["Changed Files"].index,
+            values=ct["Changed Files"].values
+        )
+    ]
+    fig = go.Figure(data=data)
+    fig.update_layout(autosize=True, margin=dict(t=0, b=0, l=0, r=0))
+    return fig
+
+
+@app.callback(
     Output("pie-creator-count-bottom", "figure"),
     [
         Input("creator-dropdown", "value"),
@@ -386,6 +548,53 @@ def creator_count_bottom_graph(creators, teams, repos, bands, years):
     fig = go.Figure(data=data)
     fig.update_layout(autosize=True, margin=dict(t=0, b=0, l=0, r=0))
     return fig
+
+
+@app.callback(
+        Output("pr-size-table", "data"),
+    [
+        Input("creator-dropdown", "value"),
+        Input("team-dropdown", "value"),
+        Input("repo-dropdown", "value"),
+        Input("band-dropdown", "value"),
+        Input("year-dropdown", "value"),
+        Input("pr-size-table", "page_current"),
+        Input("pr-size-table", "page_size"),
+        Input("pr-size-table", "sort_by")
+    ]
+)
+def creator_table_size_graph(creators, teams, repos, bands, years, page_current, page_size, sort_by):
+    df = dfCreator.copy()
+    df['Created_At'] = df['Submitted'].apply(format_date)
+    df = filter_chart_data(df, "Creator", bands, creators, repos, teams, years)
+    df = df[["Created_At", "Creator", "Additions", "Deletions", "Changed Files", "Duration"]].copy()
+    df = df.groupby("Creator").agg({"Additions": "mean", "Deletions": "mean", "Changed Files": "mean", "Duration": "mean"})
+    df.reset_index(inplace=True)
+    df["Additions"] = df["Additions"].round(2)
+    df["Deletions"] = df["Deletions"].round(2)
+    df["Changed Files"] = df["Changed Files"].round(2)
+    df["Duration"] = df["Duration"].round(2)
+    df[' index'] = range(1, len(df) + 1)
+    if len(sort_by):
+        dff = df.sort_values(
+            sort_by[0]['column_id'],
+            ascending=sort_by[0]['direction'] == 'asc',
+            inplace=False
+        )
+    else:
+        # No sort is applied
+        dff = df
+    return dff.iloc[page_current*page_size:(page_current + 1) * page_size].to_dict('records')
+
+
+@app.callback(
+    Output('pr-size-table', 'page_count'),
+    Input('datatable-use-page-count', 'value'),
+    Input('datatable-page-count', 'value'))
+def update_table(use_page_count, page_count_value):
+    if len(use_page_count) == 0 or page_count_value is None:
+        return None
+    return page_count_value
 
 
 @app.callback(
@@ -462,6 +671,32 @@ def timeline_creator_average_graph(creators, teams, repos, bands, years):
 )
 def reviewer_count_graph(creators, teams, repos, bands, years):
     df = dfReviewer
+    df['Created_At'] = df['Submitted'].apply(format_date)
+    df = filter_chart_data(df, "Reviewer", bands, creators, repos, teams, years)
+    ct = df.groupby("Reviewer").agg({"id": "count"}).sort_values(["id"], ascending=False)
+    ct = top_records(ct)
+    data = [
+        go.Pie(
+            labels=ct["id"].index,
+            values=ct["id"].values
+        )
+    ]
+    return go.Figure(data=data)
+
+
+@app.callback(
+    Output("pie-reviewer-all-count", "figure"),
+    [
+        Input("creator-dropdown", "value"),
+        Input("team-dropdown", "value"),
+        Input("repo-dropdown", "value"),
+        Input("band-dropdown", "value"),
+        Input("year-dropdown", "value"),
+
+    ]
+)
+def reviewer_all_count_graph(creators, teams, repos, bands, years):
+    df = dfReviewerAll
     df['Created_At'] = df['Submitted'].apply(format_date)
     df = filter_chart_data(df, "Reviewer", bands, creators, repos, teams, years)
     ct = df.groupby("Reviewer").agg({"id": "count"}).sort_values(["id"], ascending=False)

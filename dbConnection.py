@@ -13,18 +13,23 @@ sqlTeams = '''select name as "Team" from teams'''
 
 sqlBand = '''select distinct band as "Band" from users'''
 
+
 sqlCreatorsShort = ''' select c.id as "id", 
 r.name as Repo , 
 c.submitted as "Submitted", 
 u.name as Creator, 
 t.name as Team, 
 c.duration as "Duration", 
-u.band as "Band"
+u.band as "Band",
+c.additions as "Additions",
+c.deletions as "Deletions",
+c.changed_files as "Changed Files",
+(c.additions + c.deletions) as "Total Changes"
 from CREATORS as c
 left join repos r on c.repo = r.id
 left join users as u on c.creator = u.id
 left join teams as t on u.team_id = t.id
-where u.name not in ('SVC.MPSautomation', 'svc.m1automation m1automation', 'svc.m1automation', 'Mobile Automation','svc.mobiletools','svc.mobiletools mobiletools', 'svc.e1github', 'svc.github', 'svc.github_next', 'svc.onereg-github', 'github-actions[bot]')
+where u.name not in ('SVC.MPSautomation', 'svc.m1automation m1automation', 'svc.m1automation', 'Mobile Automation','svc.mobiletools','svc.mobiletools mobiletools', 'svc.e1github', 'svc.github', 'svc.github_next', 'svc.onereg-github', 'github-actions[bot]', 'dependabot[bot]')
 order by c.repo, c.id desc '''
 
 
@@ -52,7 +57,7 @@ from CREATORS as c
 left join repos r on c.repo = r.id
 left join users as u on c.creator = u.id
 left join teams as t on u.team_id = t.id
-where u.name not in ('SVC.MPSautomation', 'svc.m1automation m1automation', 'svc.m1automation', 'Mobile Automation','svc.mobiletools', 'svc.mobiletools mobiletools', 'svc.e1github', 'svc.github', 'svc.github_next', 'svc.onereg-github', 'github-actions[bot]')
+where u.name not in ('SVC.MPSautomation', 'svc.m1automation m1automation', 'svc.m1automation', 'Mobile Automation','svc.mobiletools', 'svc.mobiletools mobiletools', 'svc.e1github', 'svc.github', 'svc.github_next', 'svc.onereg-github', 'github-actions[bot]', 'dependabot[bot]')
 order by c.repo, c.id desc '''
 
 
@@ -74,10 +79,32 @@ where a.pr_id = c.pr_id and
         a.user_id = u.id and
         c.repo = r.id and
         c.creator <> a.user_id and
-        u.name not in ('SVC.MPSautomation', 'svc.m1automation m1automation', 'svc.m1automation', 'Mobile Automation','svc.mobiletools', 'svc.mobiletools mobiletools', 'svc.e1github', 'svc.github', 'svc.github_next', 'svc.onereg-github', 'github-actions[bot]')
+        u.name not in ('SVC.MPSautomation', 'svc.m1automation m1automation', 'svc.m1automation', 'Mobile Automation','svc.mobiletools', 'svc.mobiletools mobiletools', 'svc.e1github', 'svc.github', 'svc.github_next', 'svc.onereg-github', 'github-actions[bot]', 'dependabot[bot]')
 group by a.pr_id
 order by c.repo, c.id desc, a.activity_id asc '''
 
+
+sqlActivitiesDiffsAll = ''' select c.id as "id",
+       r.name as "Repo",
+       min(a.activity_id) as "Activity Id",
+       c.submitted as "Submitted",
+       u.name as "Reviewer",
+       (select t.name from teams as t where t.id = u.team_id) as "Team",
+       c.duration as "Duration",
+       Cast((julianday(a.createdDate) - julianday(c.created_at)) * 24 as Integer) as since_start ,
+       Cast((julianday(a.createdDate) - julianday(c.updated_at)) * 24 as Integer) as since_update,
+       u.band as Band
+from (select user_id, activity_id, pr_id, createdDate from activity group by pr_id order by pr_id, activity_id) as a,
+     creators as c,
+     repos as r,
+     users as u
+where a.pr_id = c.pr_id and
+        a.user_id = u.id and
+        c.repo = r.id and
+        c.creator <> a.user_id and
+        u.name not in ('SVC.MPSautomation', 'svc.m1automation m1automation', 'svc.m1automation', 'Mobile Automation','svc.mobiletools', 'svc.mobiletools mobiletools', 'svc.e1github', 'svc.github', 'svc.github_next', 'svc.onereg-github', 'github-actions[bot]', 'dependabot[bot]')
+group by a.pr_id
+order by c.repo, c.id desc, a.activity_id asc '''
 
 sqlActivitiesDiffs = ''' select c.id as "id",
        r.name as "Repo",
@@ -113,7 +140,7 @@ where a.pr_id = c.pr_id and
         a.user_id = u.id and
         c.repo = r.id and
         c.creator <> a.user_id and
-        u.name not in ('SVC.MPSautomation', 'svc.m1automation m1automation', 'svc.m1automation', 'Mobile Automation','svc.mobiletools', 'svc.mobiletools mobiletools', 'svc.e1github', 'svc.github', 'svc.github_next', 'svc.onereg-github', 'github-actions[bot]')
+        u.name not in ('SVC.MPSautomation', 'svc.m1automation m1automation', 'svc.m1automation', 'Mobile Automation','svc.mobiletools', 'svc.mobiletools mobiletools', 'svc.e1github', 'svc.github', 'svc.github_next', 'svc.onereg-github', 'github-actions[bot]', 'dependabot[bot]')
 group by a.pr_id
 order by c.repo, c.id desc, a.activity_id asc '''
 
