@@ -12,18 +12,23 @@ import dbConnection
 import pandas as pd
 import plotly.graph_objs as go
 
+is_anonymous = False
 
 def calculate_data():
     global dfCreator, dfReviewer, dfReviewerAll, dfRepos, dfTeams, dfBands, dfCreatorNames, dfReviewerNames, dfCreatorSize
     conn = dbConnection.getDBConnection()
-    dfCreator = pd.read_sql_query(dbConnection.sqlCreatorsShort, conn)
-    dfReviewer = pd.read_sql_query(dbConnection.sqlActivitiesDiffsShort, conn)
-    dfReviewerAll = pd.read_sql_query(dbConnection.sqlActivitiesDiffsAll, conn)
+    if is_anonymous:
+        nameField = "u.nickname"
+    else:
+        nameField = "u.name"
+    dfCreator = pd.read_sql_query(dbConnection.sqlCreatorsShort % nameField, conn)
+    dfReviewer = pd.read_sql_query(dbConnection.sqlActivitiesDiffsShort % nameField, conn)
+    dfReviewerAll = pd.read_sql_query(dbConnection.sqlActivitiesDiffsAll % nameField, conn)
     dfRepos = pd.read_sql_query(dbConnection.sqlRepos, conn)
     dfTeams = pd.read_sql_query(dbConnection.sqlTeams, conn)
     dfBands = pd.read_sql_query(dbConnection.sqlBand, conn)
-    dfCreatorNames = pd.read_sql_query(dbConnection.sqlCreatorNames, conn)
-    dfReviewerNames = pd.read_sql_query(dbConnection.sqlCommenterNames, conn)
+    dfCreatorNames = pd.read_sql_query(dbConnection.sqlCreatorNames % nameField, conn)
+    dfReviewerNames = pd.read_sql_query(dbConnection.sqlCommenterNames % nameField, conn)
     conn.close()
 #    dfCreatorSize = dfCreator[["Created_At", "Creator", "Additions", "Deletions", "Changed Files"]].copy()
 
@@ -66,29 +71,10 @@ creator_dd = html.Div([
     ),
     dcc.Dropdown(
         id="creator-dropdown",
-        options=[
-            {'label': x,
-             'value': x
-             } for x in dfCreatorNames["Creator Name"].array
-        ],
         multi=True),
 ]
     , className="dash-bootstrap")
 
-reviewer_dd = html.Div([
-    html.P(),
-    html.Label(
-        "Reviewer", className="lead"
-    ),
-    dcc.Dropdown(
-        id="reviewer-dropdown",
-        options=[
-            {'label': x,
-             'value': x
-             } for x in dfReviewerNames["Reviewer Name"].array
-        ],
-        multi=True)
-], className="dash-bootstrap")
 band_dd = html.Div([
     html.P(),
     html.Label(
@@ -145,6 +131,7 @@ sidebar = html.Div(
         html.P(
             "Select the criteria to filter the charts", className="lead"
         ),
+        dbc.Switch(id="anonymous-data", label="Anonymous", value=is_anonymous),
         creator_dd,
         team_dd,
         repo_dd,
@@ -321,15 +308,16 @@ reviewer_count_charts = html.Div(
                 ], md=6, style=CHART_TABLE_STYLE
             )
             ]
-        ),
-        dbc.Row(
-            dbc.Col(
-                [
-                    html.Label(f"Review Count by Developer, Bottom {constant.MAX_RECORDS}", className="lead"),
-                    dcc.Graph(id="pie-reviewer-count-bottom")
-                ], md=6, style=CHART_TABLE_STYLE
-            )
         )
+        # ,
+        # dbc.Row(
+        #     dbc.Col(
+        #         [
+        #             html.Label(f"Review Count by Developer, Bottom {constant.MAX_RECORDS}", className="lead"),
+        #             dcc.Graph(id="pie-reviewer-count-bottom")
+        #         ], md=6, style=CHART_TABLE_STYLE
+        #     )
+        # )
     ]
 )
 
@@ -380,6 +368,34 @@ def format_date(x):
 
 
 @app.callback(
+    Output("creator-dropdown", "options"),
+    [
+        Input("anonymous-data", "value")
+    ]
+)
+def populateCreators(anonymous):
+    options = [
+                {'label': x,
+                 'value': x
+                 } for x in dfCreatorNames["Creator Name"].array
+            ]
+    return options
+
+
+@app.callback(
+    Output("anonymous-data", "value"),
+    [
+        Input("anonymous-data", "value")
+    ]
+)
+def anonymize(anonymous_value):
+    global is_anonymous
+    is_anonymous = anonymous_value
+    calculate_data()
+    return anonymous_value
+
+
+@app.callback(
     Output("store", "data"),
     [
         Input("refresh-button", "n_clicks"),
@@ -424,9 +440,10 @@ def render_tab_content(active_tab, data):
         Input("repo-dropdown", "value"),
         Input("band-dropdown", "value"),
         Input("year-dropdown", "value"),
+        Input("anonymous-data", "value")
     ]
 )
-def creator_count_graph(creators, teams, repos, bands, years):
+def creator_count_graph(creators, teams, repos, bands, years, anonymous):
     df = dfCreator
     df['Created_At'] = df['Submitted'].apply(format_date)
     df = filter_chart_data(df, "Creator", bands, creators, repos, teams, years)
@@ -451,9 +468,10 @@ def creator_count_graph(creators, teams, repos, bands, years):
         Input("repo-dropdown", "value"),
         Input("band-dropdown", "value"),
         Input("year-dropdown", "value"),
+        Input("anonymous-data", "value")
     ]
 )
-def creator_addition_count_graph(creators, teams, repos, bands, years):
+def creator_addition_count_graph(creators, teams, repos, bands, years, anonymous):
     df = dfCreator
     df['Created_At'] = df['Submitted'].apply(format_date)
     df = filter_chart_data(df, "Creator", bands, creators, repos, teams, years)
@@ -478,9 +496,10 @@ def creator_addition_count_graph(creators, teams, repos, bands, years):
         Input("repo-dropdown", "value"),
         Input("band-dropdown", "value"),
         Input("year-dropdown", "value"),
+        Input("anonymous-data", "value")
     ]
 )
-def creator_deletions_count_graph(creators, teams, repos, bands, years):
+def creator_deletions_count_graph(creators, teams, repos, bands, years, anonymous):
     df = dfCreator
     df['Created_At'] = df['Submitted'].apply(format_date)
     df = filter_chart_data(df, "Creator", bands, creators, repos, teams, years)
@@ -505,9 +524,10 @@ def creator_deletions_count_graph(creators, teams, repos, bands, years):
         Input("repo-dropdown", "value"),
         Input("band-dropdown", "value"),
         Input("year-dropdown", "value"),
+        Input("anonymous-data", "value")
     ]
 )
-def creator_changed_files_count_graph(creators, teams, repos, bands, years):
+def creator_changed_files_count_graph(creators, teams, repos, bands, years, anonymous):
     df = dfCreator
     df['Created_At'] = df['Submitted'].apply(format_date)
     df = filter_chart_data(df, "Creator", bands, creators, repos, teams, years)
@@ -532,9 +552,10 @@ def creator_changed_files_count_graph(creators, teams, repos, bands, years):
         Input("repo-dropdown", "value"),
         Input("band-dropdown", "value"),
         Input("year-dropdown", "value"),
+        Input("anonymous-data", "value")
     ]
 )
-def creator_count_bottom_graph(creators, teams, repos, bands, years):
+def creator_count_bottom_graph(creators, teams, repos, bands, years, anonymous):
     df = dfCreator
     df['Created_At'] = df['Submitted'].apply(format_date)
     df = filter_chart_data(df, "Creator", bands, creators, repos, teams, years)
@@ -560,10 +581,11 @@ def creator_count_bottom_graph(creators, teams, repos, bands, years):
         Input("year-dropdown", "value"),
         Input("pr-size-table", "page_current"),
         Input("pr-size-table", "page_size"),
-        Input("pr-size-table", "sort_by")
+        Input("pr-size-table", "sort_by"),
+        Input("anonymous-data", "value")
     ]
 )
-def creator_table_size_graph(creators, teams, repos, bands, years, page_current, page_size, sort_by):
+def creator_table_size_graph(creators, teams, repos, bands, years, anonymous, page_current, page_size, sort_by):
     df = dfCreator.copy()
     df['Created_At'] = df['Submitted'].apply(format_date)
     df = filter_chart_data(df, "Creator", bands, creators, repos, teams, years)
@@ -605,10 +627,10 @@ def update_table(use_page_count, page_count_value):
         Input("repo-dropdown", "value"),
         Input("band-dropdown", "value"),
         Input("year-dropdown", "value"),
-
+        Input("anonymous-data", "value")
     ]
 )
-def creator_duration_graph(creators, teams, repos, bands, years):
+def creator_duration_graph(creators, teams, repos, bands, years, anonymous):
     df = dfCreator
     df['Created_At'] = df['Submitted'].apply(format_date)
     df = filter_chart_data(df, "Creator", bands, creators, repos, teams, years)
@@ -630,10 +652,10 @@ def creator_duration_graph(creators, teams, repos, bands, years):
         Input("repo-dropdown", "value"),
         Input("band-dropdown", "value"),
         Input("year-dropdown", "value"),
-
+        Input("anonymous-data", "value")
     ]
 )
-def timeline_creator_graph(creators, teams, repos, bands, years):
+def timeline_creator_graph(creators, teams, repos, bands, years, anonymous):
     df = dfCreator
     df['Created_At'] = df['Submitted'].apply(format_date)
     df = filter_chart_data(df, "Creator", bands, creators, repos, teams, years)
@@ -648,10 +670,10 @@ def timeline_creator_graph(creators, teams, repos, bands, years):
         Input("repo-dropdown", "value"),
         Input("band-dropdown", "value"),
         Input("year-dropdown", "value"),
-
+        Input("anonymous-data", "value")
     ]
 )
-def timeline_creator_average_graph(creators, teams, repos, bands, years):
+def timeline_creator_average_graph(creators, teams, repos, bands, years, anonymous):
     df = dfCreator
     df['Created_At'] = df['Submitted'].apply(format_date)
     df = filter_chart_data(df, "Creator", bands, creators, repos, teams, years)
@@ -666,10 +688,10 @@ def timeline_creator_average_graph(creators, teams, repos, bands, years):
         Input("repo-dropdown", "value"),
         Input("band-dropdown", "value"),
         Input("year-dropdown", "value"),
-
+        Input("anonymous-data", "value")
     ]
 )
-def reviewer_count_graph(creators, teams, repos, bands, years):
+def reviewer_count_graph(creators, teams, repos, bands, years, anonymous):
     df = dfReviewer
     df['Created_At'] = df['Submitted'].apply(format_date)
     df = filter_chart_data(df, "Reviewer", bands, creators, repos, teams, years)
@@ -692,10 +714,10 @@ def reviewer_count_graph(creators, teams, repos, bands, years):
         Input("repo-dropdown", "value"),
         Input("band-dropdown", "value"),
         Input("year-dropdown", "value"),
-
+        Input("anonymous-data", "value")
     ]
 )
-def reviewer_all_count_graph(creators, teams, repos, bands, years):
+def reviewer_all_count_graph(creators, teams, repos, bands, years, anonymous):
     df = dfReviewerAll
     df['Created_At'] = df['Submitted'].apply(format_date)
     df = filter_chart_data(df, "Reviewer", bands, creators, repos, teams, years)
@@ -718,10 +740,10 @@ def reviewer_all_count_graph(creators, teams, repos, bands, years):
         Input("repo-dropdown", "value"),
         Input("band-dropdown", "value"),
         Input("year-dropdown", "value"),
-
+        Input("anonymous-data", "value")
     ]
 )
-def reviewer_count_bottom_graph(creators, teams, repos, bands, years):
+def reviewer_count_bottom_graph(creators, teams, repos, bands, years, anonymous):
     df = dfReviewer
     df['Created_At'] = df['Submitted'].apply(format_date)
     df = filter_chart_data(df, "Reviewer", bands, creators, repos, teams, years)
@@ -752,10 +774,10 @@ def top_records(ct):
         Input("repo-dropdown", "value"),
         Input("band-dropdown", "value"),
         Input("year-dropdown", "value"),
-
+        Input("anonymous-data", "value")
     ]
 )
-def reviewer_duration_graph(creators, teams, repos, bands, years):
+def reviewer_duration_graph(creators, teams, repos, bands, years, anonymous):
     df = dfReviewer
     df['Created_At'] = df['Submitted'].apply(format_date)
     df = filter_chart_data(df, "Reviewer", bands, creators, repos, teams, years)
@@ -777,10 +799,10 @@ def reviewer_duration_graph(creators, teams, repos, bands, years):
         Input("repo-dropdown", "value"),
         Input("band-dropdown", "value"),
         Input("year-dropdown", "value"),
-
+        Input("anonymous-data", "value")
     ]
 )
-def timeline_reviewer_graph(creators, teams, repos, bands, years):
+def timeline_reviewer_graph(creators, teams, repos, bands, years, anonymous):
     df = dfReviewer
     df['Created_At'] = df['Submitted'].apply(format_date)
     df = filter_chart_data(df, "Reviewer", bands, creators, repos, teams, years)

@@ -1,8 +1,8 @@
 import sqlite3
 
-sqlCreatorNames = '''select distinct u.name as "Creator Name" from users as u, CREATORS as c where u.id = c.creator'''
+sqlCreatorNames = '''select distinct %s as "Creator Name" from users as u, CREATORS as c where u.id = c.creator'''
 
-sqlCommenterNames = '''select distinct u.name as "Reviewer Name" from 
+sqlCommenterNames = '''select distinct %s as "Reviewer Name" from 
                         users as u, 
                         activity as a 
                         where u.id = a.user_id'''
@@ -13,11 +13,10 @@ sqlTeams = '''select name as "Team" from teams'''
 
 sqlBand = '''select distinct band as "Band" from users'''
 
-
 sqlCreatorsShort = ''' select c.id as "id", 
 r.name as Repo , 
 c.submitted as "Submitted", 
-u.name as Creator, 
+%s as Creator, 
 t.name as Team, 
 c.duration as "Duration", 
 u.band as "Band",
@@ -65,7 +64,7 @@ sqlActivitiesDiffsShort = ''' select c.id as "id",
        r.name as "Repo",
        min(a.activity_id) as "Activity Id",
        c.submitted as "Submitted",
-       u.name as "Reviewer",
+       %s as "Reviewer",
        (select t.name from teams as t where t.id = u.team_id) as "Team",
        c.duration as "Duration",
        Cast((julianday(a.createdDate) - julianday(c.created_at)) * 24 as Integer) as since_start ,
@@ -88,7 +87,7 @@ sqlActivitiesDiffsAll = ''' select c.id as "id",
        r.name as "Repo",
        min(a.activity_id) as "Activity Id",
        c.submitted as "Submitted",
-       u.name as "Reviewer",
+       %s as "Reviewer",
        (select t.name from teams as t where t.id = u.team_id) as "Team",
        c.duration as "Duration",
        Cast((julianday(a.createdDate) - julianday(c.created_at)) * 24 as Integer) as since_start ,

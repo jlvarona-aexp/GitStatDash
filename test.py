@@ -15,13 +15,16 @@ import dbConnection
 
 
 conn = dbConnection.getDBConnection()
-dfCreator = pd.read_sql_query(dbConnection.sqlCreators, conn)
-dfReviewer = pd.read_sql_query(dbConnection.sqlActivitiesDiffs, conn)
-dfRepos = pd.read_sql_query(dbConnection.sqlRepos, conn)
-dfTeams = pd.read_sql_query(dbConnection.sqlTeams, conn)
-dfBands = pd.read_sql_query(dbConnection.sqlBand, conn)
-dfCreatorNames = pd.read_sql_query(dbConnection.sqlCreatorNames, conn)
-dfReviewerNames = pd.read_sql_query(dbConnection.sqlCommenterNames, conn)
+sqlCN = '''select distinct %s as "Creator Name" from users as u, CREATORS as c where u.id = c.creator'''
+print(sqlCN % "u.name")
+
+#dfCreator = pd.read_sql_query(dbConnection.sqlCreators, conn)
+#dfReviewer = pd.read_sql_query(dbConnection.sqlActivitiesDiffs, conn)
+#dfRepos = pd.read_sql_query(dbConnection.sqlRepos, conn)
+#dfTeams = pd.read_sql_query(dbConnection.sqlTeams, conn)
+#dfBands = pd.read_sql_query(dbConnection.sqlBand, conn)
+dfCreatorNames = pd.read_sql_query(sqlCN % "u.nickname", conn)
+#dfReviewerNames = pd.read_sql_query(dbConnection.sqlCommenterNames, conn)
 conn.close()
 
 # df = dfCreator[['id','Created At','Creator','Team','Band','Repo','Duration']]
