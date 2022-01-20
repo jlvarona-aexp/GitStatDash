@@ -15,17 +15,24 @@ import dbConnection
 
 
 conn = dbConnection.getDBConnection()
-sqlCN = '''select distinct %s as "Creator Name" from users as u, CREATORS as c where u.id = c.creator'''
-print(sqlCN % "u.name")
+#sqlCN = '''select distinct %s as "Creator Name" from users as u, CREATORS as c where u.id = c.creator'''
+#print(sqlCN % "u.name")
 
-#dfCreator = pd.read_sql_query(dbConnection.sqlCreators, conn)
+dfCreator = pd.read_sql_query(dbConnection.sqlCreators, conn,
+                              parse_dates={"Submitted": "%Y-%m-%d",
+                                           "Done": "%Y-%m-%d",
+                                           "Created At": "%Y-%m-%dT%H:%M:%S.%f",
+                                           "Updated At": "%Y-%m-%dT%H:%M:%S.%f"})
 #dfReviewer = pd.read_sql_query(dbConnection.sqlActivitiesDiffs, conn)
 #dfRepos = pd.read_sql_query(dbConnection.sqlRepos, conn)
 #dfTeams = pd.read_sql_query(dbConnection.sqlTeams, conn)
 #dfBands = pd.read_sql_query(dbConnection.sqlBand, conn)
-dfCreatorNames = pd.read_sql_query(sqlCN % "u.nickname", conn)
+#dfCreatorNames = pd.read_sql_query(sqlCN % "u.nickname", conn)
 #dfReviewerNames = pd.read_sql_query(dbConnection.sqlCommenterNames, conn)
 conn.close()
+
+result = dfCreator.groupby("Creator").agg({"Submitted": "count", "Created At": lambda group: group.sort_values().diff().mean()})
+print(result)
 
 # df = dfCreator[['id','Created At','Creator','Team','Band','Repo','Duration']]
 # print(df)
