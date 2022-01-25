@@ -14,7 +14,7 @@ app.title = "PR Metrics Dashboard"
 
 
 def calculate_data():
-    global dfCreator, dfReviewer, dfReviewerAll, dfRepos, dfTeams, dfBands, dfCreatorNames, dfReviewerNames, dfCreatorSize
+    global dfCreator, dfReviewer, dfReviewerAll, dfRepos, dfTeams, dfBands, dfCreatorNames, dfReviewerNames, dfCreatorReport
     conn = dbConnection.getDBConnection()
     if is_anonymous:
         nameField = "u.nickname"
@@ -28,6 +28,7 @@ def calculate_data():
     dfBands = pd.read_sql_query(dbConnection.sqlBand, conn)
     dfCreatorNames = pd.read_sql_query(dbConnection.sqlCreatorNames % nameField, conn)
     dfReviewerNames = pd.read_sql_query(dbConnection.sqlCommenterNames % nameField, conn)
+    dfCreatorReport = pd.read_sql_query(dbConnection.sqlReportNames, conn)
     conn.close()
 
 

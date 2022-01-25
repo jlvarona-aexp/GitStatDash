@@ -104,7 +104,7 @@ def creator_changed_files_count_graph(creators, teams, repos, bands, years, anon
     df['Created_At'] = df['Submitted'].apply(commons.format_date)
     df = commons.filter_chart_data(df, "Creator", bands, creators, repos, teams, years)
     ct = df.groupby("Creator").agg({"Changed Files": "count"}).sort_values(["Changed Files"], ascending=False)
-    ct = settings.top_records(ct)
+    ct = commons.top_records(ct)
     data = [
         go.Pie(
             labels=ct["Changed Files"].index,

@@ -2,6 +2,8 @@ import sqlite3
 
 sqlCreatorNames = '''select distinct %s as "Creator Name" from users as u, CREATORS as c where u.id = c.creator'''
 
+sqlReportNames = '''select name, band, platform from users where team_id <> 21 group by name order by name'''
+
 sqlCommenterNames = '''select distinct %s as "Reviewer Name" from 
                         users as u, 
                         activity as a 

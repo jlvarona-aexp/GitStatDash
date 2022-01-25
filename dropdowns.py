@@ -56,7 +56,7 @@ year_dd = html.Div([
 @commons.app.callback(
     Output("creator-dropdown", "options"),
     [
-        Input("anonymous-data", "value")
+        Input("a", "value")
     ]
 )
 def populateCreators(anonymous):

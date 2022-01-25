@@ -9,6 +9,7 @@ import styles
 import dropdowns
 import creator_graphs
 import reviewer_graphs
+import personal_reports
 
 commons.calculate_data()
 
@@ -163,6 +164,8 @@ creator_count_content = html.Div(creator_count_charts, id="creator-count-content
 
 creator_pr_size_content = html.Div(pr_size_count, id="creator-pr-size-content", style=styles.CONTENT_STYLE)
 
+personal_report_content = html.Div(personal_reports.creator_personal_count, id="creator-personal-count", style=styles.CONTENT_STYLE)
+
 reviewer_count_charts = html.Div(
     [
         dbc.Row([
@@ -203,6 +206,7 @@ tabLayout = dbc.Container(
                 dbc.Tab(label="Creator Sizes", tab_id="creator-pr-size-tab"),
                 dbc.Tab(label="Reviewer", tab_id="reviewer-tab"),
                 dbc.Tab(label="Reviewer Count", tab_id="reviewer-count-tab"),
+#                dbc.Tab(label="Personal Report", tab_id="personal-report-tab"),
             ],
             id="tabs",
             active_tab="creator-tab",
@@ -263,6 +267,8 @@ def render_tab_content(active_tab, data):
         return creator_count_content
     elif active_tab == "creator-pr-size-tab":
         return creator_pr_size_content
+    elif active_tab == "personal-report-tab":
+        return personal_report_content
     elif active_tab == "reviewer-tab":
         return reviewer_content
     elif active_tab == "reviewer-count-tab":
