@@ -102,8 +102,9 @@ def creator_personal_report(creators, years, page_current, page_size, sort_by, a
     in_repo = commons.dfCreatorReport.loc[commons.dfCreatorReport['platform'] == main_rec['platform'].values[0]]['name'].values
 
     table = pd.pivot_table(df, values='id', index=['Created_At'],
-                           columns=['Creator'], aggfunc='count')
-
+                            fill_value=0, aggfunc='count')
+    print(table)
+    print(table[creator])
     df = commons.filter_chart_data(df, "Creator", False, creators, False, False, years)
     df = df[["Created_At", "Creator", "Additions", "Deletions", "Changed Files", "Duration"]].copy()
     df = df.groupby("Creator").agg({"Additions": "mean", "Deletions": "mean", "Changed Files": "mean", "Duration": "mean"})

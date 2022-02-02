@@ -206,7 +206,7 @@ tabLayout = dbc.Container(
                 dbc.Tab(label="Creator Sizes", tab_id="creator-pr-size-tab"),
                 dbc.Tab(label="Reviewer", tab_id="reviewer-tab"),
                 dbc.Tab(label="Reviewer Count", tab_id="reviewer-count-tab"),
-#                dbc.Tab(label="Personal Report", tab_id="personal-report-tab"),
+                dbc.Tab(label="Personal Report", tab_id="personal-report-tab"),
             ],
             id="tabs",
             active_tab="creator-tab",
