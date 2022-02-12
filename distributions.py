@@ -1,12 +1,9 @@
 import pandas as pd
 import commons
-import constant
 from dash import dcc, html, Output, Input
 import dash_bootstrap_components as dbc
-import plotly.graph_objs as go
 import plotly.figure_factory as ff
-import scipy
-from sklearn.preprocessing import MinMaxScaler, MaxAbsScaler
+from sklearn.preprocessing import MaxAbsScaler
 import styles
 
 distribution_charts = html.Div(
@@ -135,5 +132,3 @@ def create_dist_graph(table):
         res.append(list(value.values()))
     figure = ff.create_distplot(hist_data=res, group_labels=group_labels, curve_type="normal", show_hist=False)
     return figure
-
-

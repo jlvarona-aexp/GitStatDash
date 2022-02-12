@@ -22,3 +22,8 @@ six==1.16.0
 tenacity==8.0.1
 Werkzeug==2.0.2
 gunicorn==20.1.0
+
+names~=0.3.0
+swnamer~=0.1.0
+Faker~=11.3.0
+scikit-learn~=1.0.2
