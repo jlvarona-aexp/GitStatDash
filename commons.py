@@ -55,6 +55,18 @@ def format_week_date(x):
         return ""
 
 
+def format_day_date(x):
+    if x:
+        if "/" in x:
+            mydate = datetime.strptime(x, "%m/%d/%y")
+            return mydate.strftime("%Y-%m-%d")
+        else:
+            mydate = datetime.strptime(x, "%Y-%m-%d")
+            return mydate.strftime("%Y-%m-%d")
+    else:
+        return ""
+
+
 def top_records(ct):
     if ct.size > constant.MAX_RECORDS:
         sum_total = ct.sum(axis=0)

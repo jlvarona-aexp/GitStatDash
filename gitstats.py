@@ -7,6 +7,7 @@ import constant
 import commons
 import styles
 import dropdowns
+import distributions
 import creator_graphs
 import reviewer_graphs
 import personal_reports
@@ -197,6 +198,8 @@ reviewer_count_charts = html.Div(
 
 reviewer_count_content = html.Div(reviewer_count_charts, id="reviewer-count-content", style=styles.CONTENT_STYLE)
 
+distribution_content = html.Div(distributions.distribution_charts, id="distribution-content", style=styles.CONTENT_STYLE)
+
 tabLayout = dbc.Container(
     [
         dbc.Tabs(
@@ -207,6 +210,7 @@ tabLayout = dbc.Container(
                 dbc.Tab(label="Reviewer", tab_id="reviewer-tab"),
                 dbc.Tab(label="Reviewer Count", tab_id="reviewer-count-tab"),
                 dbc.Tab(label="Personal Report", tab_id="personal-report-tab"),
+                dbc.Tab(label="Distributions", tab_id="distribution-tab")
             ],
             id="tabs",
             active_tab="creator-tab",
@@ -273,6 +277,8 @@ def render_tab_content(active_tab, data):
         return reviewer_content
     elif active_tab == "reviewer-count-tab":
         return reviewer_count_content
+    elif active_tab == "distribution-tab":
+        return distribution_content
 
 
 #    return "No tab selected"
