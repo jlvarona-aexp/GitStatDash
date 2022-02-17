@@ -1,7 +1,4 @@
-import numpy as np
-
 import commons
-import constant
 from dash import html, dcc, Output, Input, dash_table
 import pandas as pd
 
@@ -36,15 +33,10 @@ creator_personal_count = html.Div([
         columns=[
             {"name": "PR's created by Week", "id": "Week"},
             {"name": "Your Count", "id": "You"},
-            {"name": "My Peers", "id": "Peers"},
-            {"name": "My Platform", "id": "Platform"},
-            {"name": "My Organization", "id": "Everybody"}],   #[{"name": i, "id": i} for i in prSizeColumns],
-        page_current=0,
-        page_size=constant.PAGE_SIZE,
-        page_action='custom',
-        sort_action='custom',
-        sort_mode='single',
-        sort_by=[],
+            {"name": "My Peers (same band and platform)", "id": "Peers"},
+            {"name": "My Platform (same platform)", "id": "Platform"},
+            {"name": "My Organization (mobile team)", "id": "Everybody"}],
+        export_format="csv",
         style_header={'backgroundColor': 'black',
                       'color': 'white'},
         style_cell={'textAlign': 'center'},
@@ -54,25 +46,8 @@ creator_personal_count = html.Div([
                 'textAlign': 'left'
             }
         ]
-    ),
-    html.Br(),
-    dcc.Checklist(
-        id='datatable-use-page-count',
-        options=[
-            {'label': 'Use page_count', 'value': 'True'}
-        ],
-        value=['True']
-    ),
-    'Page count: ',
-    dcc.Input(
-        id='datatable-page-count',
-        type='number',
-        min=1,
-        max=29,
-        value=20
     )
-]
-)
+])
 
 
 @commons.app.callback(
@@ -95,13 +70,10 @@ def populate_creators_pr(anonymous):
     [
         Input("creator-pr-dropdown", "value"),
         Input("year-pr-dropdown", "value"),
-        Input("pr-personal-table", "page_current"),
-        Input("pr-personal-table", "page_size"),
-        Input("pr-personal-table", "sort_by"),
         Input("anonymous-data", "value")
     ]
 )
-def creator_personal_report(creator, years, page_current, page_size, sort_by, anonymous):
+def creator_personal_report(creator, years, anonymous):
     if creator:
         df = commons.dfCreator.copy()
         df['Created_At'] = df['Submitted'].apply(commons.format_week_date)
@@ -130,16 +102,7 @@ def creator_personal_report(creator, years, page_current, page_size, sort_by, an
         df_res.index.name = "Week"
         df_res.reset_index(inplace=True)
 
-        if len(sort_by):
-            dff = df_res.sort_values(
-                sort_by[0]['column_id'],
-                ascending=sort_by[0]['direction'] == 'asc',
-                inplace=False
-            )
-        else:
-            # No sort is applied
-            dff = df_res
-        return dff.iloc[page_current*page_size:(page_current + 1) * page_size].to_dict('records')
+        return df_res.to_dict('records')
     else:
         return []
 
