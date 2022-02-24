@@ -39,7 +39,9 @@ creator_personal_count = html.Div([
         export_format="csv",
         style_header={'backgroundColor': 'black',
                       'color': 'white'},
-        style_cell={'textAlign': 'center'},
+        style_cell={'textAlign': 'center',
+                    'height': 'auto',
+                    'whiteSpace': 'normal'},
         style_cell_conditional=[
             {
                 'if': {'column_id': 'Creator'},
@@ -116,6 +118,7 @@ def create_quantiles(level, filter, df, df_res):
 
 
 def add_quantiles(level, table, df_res):
+    df_res[level+"10"] = table.quantile(0.1, axis=1)
     df_res[level+"30"] = table.quantile(0.3, axis=1)
     df_res[level+"50"] = table.quantile(0.5, axis=1)
     df_res[level+"90"] = table.quantile(0.9, axis=1)
@@ -124,12 +127,14 @@ def add_quantiles(level, table, df_res):
 
 def categorise(row, level):
     if row["You"] > row[level+"95"]:
-        return "Top 5% 🔥"
+        return "Top 5% 🔥🔥"
     elif row["You"] > row[level+"90"]:
-        return "Top 10%"
+        return "Top 10% 🔥"
     elif row["You"] > row[level+"50"]:
         return "Top 50%"
     elif row["You"] > row[level+"30"]:
         return "Bottom 50%"
-    else:
+    elif row["You"] > row[level+"10"]:
         return "Bottom 30% ❄️"
+    else:
+        return "Bottom 10% ❄️❄️"

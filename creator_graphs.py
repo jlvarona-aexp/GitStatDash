@@ -23,7 +23,6 @@ def creator_count_graph(creators, teams, repos, bands, years, anonymous):
     df = commons.filter_chart_data(df, "Creator", bands, creators, repos, teams, years)
     dff = df
     dff['createdat'] = pd.to_datetime(dff['createdat'], utc=True)
-    print(dff)
     #print(dff['createdat'].diff())
     ct = df.groupby("Creator").agg({"id": "count"}).sort_values(["id"], ascending=False)
     ct = commons.top_records(ct)
