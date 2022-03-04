@@ -43,7 +43,7 @@ creator_charts = html.Div(
                 ),
                 dbc.Col(
                     [
-                        html.Label("PR Creation Average Over Time", className="lead"),
+                        html.Label("PR Duration Average Over Time", className="lead"),
                         dcc.Graph(id="timeline-creator-average")
                     ], style=styles.CHART_TABLE_STYLE
                 )

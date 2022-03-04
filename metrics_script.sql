@@ -6,23 +6,6 @@ create table repos
     name text    not null
 );
 
-create table raw_json
-(
-    raw_id    integer not null
-        constraint raw_json_pk
-            primary key autoincrement,
-    id        integer not null,
-    repo_id   integer not null
-        references repos,
-    json_dump text
-);
-
-create unique index raw_json_id_repo_id_uindex
-    on raw_json (id, repo_id);
-
-create unique index raw_json_raw_id_uindex
-    on raw_json (raw_id);
-
 create unique index repos_id_uindex
     on repos (id);
 
@@ -152,5 +135,4 @@ create unique index users_repo_id_uindex
 
 create index users_team_id_repo_id_index
     on users (team_id, repo_id);
-
 
