@@ -1,4 +1,5 @@
 import dash_bootstrap_components as dbc
+import pandas as pd
 from dash import html, dcc, Output, Input, dash_table
 from flask import Flask
 from pandas import Index
@@ -11,6 +12,7 @@ import distributions
 import creator_graphs
 import reviewer_graphs
 import personal_reports
+import comparison
 
 commons.calculate_data()
 
@@ -196,9 +198,43 @@ reviewer_count_charts = html.Div(
     ]
 )
 
+comparison_charts = html.Div(
+    [
+        dbc.Row(
+            [
+                dbc.Col(
+                    [
+                        html.Label("PR Creation Comparison Count Over Time", className="lead"),
+                        dcc.Graph(id="timeline-creator-comp")
+                    ], style=styles.CHART_TABLE_STYLE
+                ),
+                dbc.Col(
+                    [
+                        html.Label("PR Duration Comparison Average Over Time", className="lead"),
+                        dcc.Graph(id="timeline-creator-average-comp")
+                    ], style=styles.CHART_TABLE_STYLE
+                )
+            ]
+        ),
+        dbc.Row(
+            [
+                dbc.Col(
+                    [
+                        html.Label("Review Contributions Count Comparison Over Time", className="lead"),
+                        dcc.Graph(id="timeline-reviewer-comp")
+                    ], style=styles.CHART_TABLE_STYLE
+                ),
+            ]
+        )
+    ]
+)
+
+
 reviewer_count_content = html.Div(reviewer_count_charts, id="reviewer-count-content", style=styles.CONTENT_STYLE)
 
 distribution_content = html.Div(distributions.distribution_charts, id="distribution-content", style=styles.CONTENT_STYLE)
+
+comparison_content = html.Div(comparison_charts, id="comparison-page-content", style=styles.CONTENT_STYLE)
 
 tabLayout = dbc.Container(
     [
@@ -210,7 +246,8 @@ tabLayout = dbc.Container(
                 dbc.Tab(label="Reviewer", tab_id="reviewer-tab"),
                 dbc.Tab(label="Reviewer Count", tab_id="reviewer-count-tab"),
                 dbc.Tab(label="Personal Report", tab_id="personal-report-tab"),
-                dbc.Tab(label="Distributions", tab_id="distribution-tab")
+                dbc.Tab(label="Distributions", tab_id="distribution-tab"),
+                dbc.Tab(label="Comparison", tab_id="comparison-tab")
             ],
             id="tabs",
             active_tab="creator-tab",
@@ -234,7 +271,9 @@ sidebar = html.Div(
         dropdowns.band_dd,
         dropdowns.year_dd,
         html.Hr(),
-        dbc.Button("Refresh Data", id="refresh-button", className="me-3", href="/")
+        dbc.Button("Refresh Data", id="refresh-button", className="me-3", href="/"),
+        html.Hr(),
+        dbc.Button("Export Data to Excel", id="export-button", className="me-3")
     ],
     style=styles.SIDEBAR_STYLE
 )
@@ -279,6 +318,8 @@ def render_tab_content(active_tab, data):
         return reviewer_count_content
     elif active_tab == "distribution-tab":
         return distribution_content
+    elif active_tab == "comparison-tab":
+        return comparison_content
 
 
 #    return "No tab selected"

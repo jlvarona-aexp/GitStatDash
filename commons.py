@@ -32,6 +32,30 @@ def calculate_data():
     conn.close()
 
 
+def format_year(x):
+    if x:
+        if "/" in x:
+            mydate = datetime.strptime(x, "%m/%d/%y")
+            return mydate.strftime("%Y")
+        else:
+            mydate = datetime.strptime(x, "%Y-%m-%d")
+            return mydate.strftime("%Y")
+    else:
+        return ""
+
+
+def format_month(x):
+    if x:
+        if "/" in x:
+            mydate = datetime.strptime(x, "%m/%d/%y")
+            return mydate.strftime("%m")
+        else:
+            mydate = datetime.strptime(x, "%Y-%m-%d")
+            return mydate.strftime("%m")
+    else:
+        return ""
+
+
 def format_date(x):
     if x:
         if "/" in x:
