@@ -1,4 +1,5 @@
 import commons
+import pandas as pd
 from dash import html, dcc, Output, Input
 
 creator_dd = html.Div([
@@ -133,3 +134,24 @@ def on_button_click(n):
     commons.calculate_data()
     return {}
 
+
+# @commons.app.callback(
+#     Output("store", "data"),
+#     [
+#         Input("creator-dropdown", "value"),
+#         Input("team-dropdown", "value"),
+#         Input("repo-dropdown", "value"),
+#         Input("band-dropdown", "value"),
+#         Input("year-dropdown", "value"),
+#         Input("anonymous-data", "value"),
+#         Input("export-button", "n_clicks"),
+#     ]
+# )
+def on_button_export_click(creators, teams, repos, bands, years, anonymous, n):
+    df = commons.dfCreator
+    df['Created_At'] = df['Submitted'].apply(commons.format_date)
+    df = commons.filter_chart_data(df, "Creator", bands, creators, repos, teams, years)
+    dff = df
+    dff['createdat'] = pd.to_datetime(dff['createdat'], utc=True)
+    dff.to_excel("output.xlsx")
+    return {}
