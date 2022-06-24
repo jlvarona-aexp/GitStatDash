@@ -125,7 +125,7 @@ def create_count_timeline_table(df):
     data = []
     for column in table.columns:
         data.append(
-            go.Line(
+            go.Scatter(
                 x=table[column].index,
                 y=table[column].values,
                 name=column
@@ -139,10 +139,11 @@ def create_count_timeline_table(df):
 def create_average_timeline_table(df):
     table = pd.pivot_table(df, values='Duration', index=['Created_At'],
                            columns=['Repo'], aggfunc=np.mean)
+
     data = []
     for column in table.columns:
         data.append(
-            go.Line(
+            go.Scatter(
                 x=table[column].index,
                 y=table[column].values,
                 name=column
