@@ -225,6 +225,16 @@ comparison_charts = html.Div(
                     ], style=styles.CHART_TABLE_STYLE
                 ),
             ]
+        ),
+        dbc.Row(
+            [
+                dbc.Col(
+                    [
+                        html.Label("PR Creation Comparison Per Developer", className="lead"),
+                        dcc.Graph(id="timeline-creator-to-creator-comp")
+                    ], style=styles.CHART_TABLE_STYLE
+                ),
+            ]
         )
     ]
 )

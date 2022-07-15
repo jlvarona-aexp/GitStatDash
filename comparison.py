@@ -195,6 +195,25 @@ def timeline_reviewer_graph_comp(creators, teams, repos, bands, anonymous):
     return create_count_timeline_table_comp(df)
 
 
+@commons.app.callback(
+    Output("timeline-creator-to-creator-comp", "figure"),
+    [
+        Input("creator-dropdown", "value"),
+        Input("team-dropdown", "value"),
+        Input("repo-dropdown", "value"),
+        Input("band-dropdown", "value"),
+        Input("year-dropdown", "value"),
+        Input("anonymous-data", "value")
+    ]
+)
+def timeline_creator_to_creator_graph_comp(creators, teams, repos, bands, years, anonymous):
+    df = commons.dfCreator
+    df['Created_At'] = df['Submitted'].apply(commons.format_date)
+    df['Created_At_Month'] = df['Submitted'].apply(commons.format_month)
+    df = commons.filter_chart_data(df, "Creator", bands, creators, repos, teams, years)
+    return create_developer_table_comp(df)
+
+
 def create_count_timeline_table_comp(df):
     table = pd.pivot_table(df, values='id', index=['Created_At_Month'],
                            columns=['Created_At_Year'], aggfunc=pd.Series.count)
@@ -216,6 +235,23 @@ def create_count_timeline_table_comp(df):
 def create_average_timeline_table_comp(df):
     table = pd.pivot_table(df, values='Duration', index=['Created_At_Month'],
                            columns=['Created_At_Year'], aggfunc=np.mean)
+    data = []
+    for column in table.columns:
+        data.append(
+            go.Scatter(
+                x=table[column].index,
+                y=table[column].values,
+                name=column
+            )
+        )
+    figure = go.Figure(data=data)
+    figure.update_yaxes(automargin=True, autorange=True)
+    return figure
+
+
+def create_developer_table_comp(df):
+    table = pd.pivot_table(df, values='id', index=['Created_At'],
+                           columns=['Creator'], aggfunc=pd.Series.count)
     data = []
     for column in table.columns:
         data.append(
